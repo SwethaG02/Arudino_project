@@ -1,45 +1,91 @@
+// Include the Servo library to control the servo motor
 #include <Servo.h>
-Servo servo ;
-int eastLDR = 0;
-int westLDR = 1;
+
+// Create a Servo object
+Servo servo;
+
+// Define LDR sensor pins (Analog Inputs)
+int eastLDR = A0; // Light sensor facing East
+int westLDR = A1; // Light sensor facing West
+
+// Variables to store LDR sensor readings
 int east = 0;
 int west = 0;
-int error = 0;
+int error = 0;  // Difference between east and west LDR readings
+
+// Calibration value to adjust sensor sensitivity (adjust as needed)
 int calibration = 600;
+
+// Initial servo position (90° means the panel is facing straight)
 int servoposition = 90;
+
+// Servo movement limits
+#define MIN_POSITION 20  // Prevents servo from moving too far left
+#define MAX_POSITION 150 // Prevents servo from moving too far right
+
 void setup()
 {
+  // Attach the servo to pin 9
   servo.attach(9);
+  
+  // Move the servo to the initial position (middle)
+  servo.write(servoposition);
+
+  // Start Serial Monitor for debugging (optional)
+  Serial.begin(9600);
 }
+
 void loop()
 {
+  // Read LDR sensor values and apply calibration to the east LDR
   east = calibration + analogRead(eastLDR);
   west = analogRead(westLDR);
+
+  // Print sensor values for debugging
+  Serial.print("East LDR: "); Serial.print(east);
+  Serial.print(" | West LDR: "); Serial.print(west);
+
+  // If both LDR readings are very low, assume it's night time
   if (east < 350 && west < 350)
   {
-    while (servoposition <= 150)
+    Serial.println(" | Night detected! Resetting panel position.");
+    
+    // Move the servo back to the east position (morning reset)
+    while (servoposition <= MAX_POSITION)
     {
       servoposition++;
       servo.write(servoposition);
       delay(100);
     }
   }
+
+  // Calculate error (difference between east and west LDR readings)
   error = east - west;
+  
+  // Print error value
+  Serial.print(" | Error: "); Serial.println(error);
+
+  // If sunlight is stronger on the east side, move servo right
   if (error > 15)
   {
-    if (servoposition <= 150)
+    if (servoposition < MAX_POSITION) // Ensure servo doesn't exceed max limit
     {
       servoposition++;
       servo.write(servoposition);
+      Serial.println("Moving Right ➡");
     }
   }
+  // If sunlight is stronger on the west side, move servo left
   else if (error < -15)
   {
-    if (servoposition > 20)
+    if (servoposition > MIN_POSITION) // Ensure servo doesn't exceed min limit
     {
       servoposition--;
       servo.write(servoposition);
+      Serial.println("Moving Left ⬅");
     }
   }
+  
+  // Short delay before reading sensors again
   delay(100);
 }
